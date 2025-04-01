@@ -96,72 +96,74 @@ const Dashboard = () => {
 
         </div>
       </nav>
+      <div className="p-4">
 
-      <h2 className="text-lg font-semibold mt-4">To-Do (Admin)</h2>
-      {adminTodos.length === 0 ? (
-        <p>Немає To-Do, створених вами як Admin.</p>
-      ) : (
-        <div className="grid grid-cols-4 mt-4 p-4">
-          {adminTodos.map((todo) => (
-            <div key={todo.id} className="border rounded-2xl p-2 m-2 max-w-2xl flex flex-col justify-between">
-              <Link href={`/todo/${todo.id}`} className="hover:underline">
-                {todo.title}
-              </Link>
-              <p className="text-xs text-gray-400">{todo.description}</p>
-              {todo.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center p-1">
-                  <div>
-                    <p className="text-xs font-medium">{item.title}</p>
+        <h2 className="text-lg font-semibold mt-4">To-Do (Admin)</h2>
+        {adminTodos.length === 0 ? (
+          <p>Немає To-Do, створених вами як Admin.</p>
+        ) : (
+          <div className="grid grid-cols-4 mt-4 p-4">
+            {adminTodos.map((todo) => (
+              <div key={todo.id} className="border rounded-2xl p-2 m-2 max-w-2xl flex flex-col justify-between">
+                <Link href={`/todo/${todo.id}`} className="hover:underline">
+                  {todo.title}
+                </Link>
+                <p className="text-xs text-gray-400">{todo.description}</p>
+                {todo.items.map((item, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center p-1">
+                    <div>
+                      <p className="text-xs font-medium">{item.title}</p>
+                    </div>
+                    <div className="flex justify-end">
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        className="h-4 w-4"
+                        readOnly
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-end">
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      className="h-4 w-4"
-                      readOnly
-                    />
-                  </div>
-                </div>
-              ))}
-              <button
-                onClick={() => handleDelete(todo.id)}
-                className="mt-2 p-1 bg-red-500 text-white rounded text-xs"
-              >Видалити</button>
-            </div>
-          ))}
-        </div>
-      )}
+                ))}
+                <button
+                  onClick={() => handleDelete(todo.id)}
+                  className="mt-2 p-1 bg-red-500 text-white rounded text-xs"
+                >Видалити</button>
+              </div>
+            ))}
+          </div>
+        )}
 
-      <h2 className="text-lg font-semibold mt-4">To-Do (Viewer)</h2>
-      {viewerTodos.length === 0 ? (
-        <p>Немає To-Do, створених вами як Admin.</p>
-      ) : (
-        <div className="grid grid-cols-4 mt-4 p-4">
-          {viewerTodos.map((todo) => (
-            <div key={todo.id} className="border rounded-2xl p-2 m-2 max-w-2xl">
-              <Link href={`/todo/${todo.id}`} className="hover:underline">
-                {todo.title}
-              </Link>
-              <p className="text-xs text-gray-400">{todo.description}</p>
-              {todo.items.map((item, index) => (
-                <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center p-1">
-                  <div>
-                    <p className="text-xs font-medium">{item.title}</p>
+        <h2 className="text-lg font-semibold mt-4">To-Do (Viewer)</h2>
+        {viewerTodos.length === 0 ? (
+          <p>Немає To-Do, створених вами як Admin.</p>
+        ) : (
+          <div className="grid grid-cols-4 mt-4 p-4">
+            {viewerTodos.map((todo) => (
+              <div key={todo.id} className="border rounded-2xl p-2 m-2 max-w-2xl">
+                <Link href={`/todo/${todo.id}`} className="hover:underline">
+                  {todo.title}
+                </Link>
+                <p className="text-xs text-gray-400">{todo.description}</p>
+                {todo.items.map((item, index) => (
+                  <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center p-1">
+                    <div>
+                      <p className="text-xs font-medium">{item.title}</p>
+                    </div>
+                    <div className="flex justify-end">
+                      <input
+                        type="checkbox"
+                        checked={item.completed}
+                        className="h-4 w-4"
+                        readOnly
+                      />
+                    </div>
                   </div>
-                  <div className="flex justify-end">
-                    <input
-                      type="checkbox"
-                      checked={item.completed}
-                      className="h-4 w-4"
-                      readOnly
-                    />
-                  </div>
-                </div>
-              ))}
-            </div>
-          ))}
-        </div>
-      )}
+                ))}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
     </div>
   );
 };
