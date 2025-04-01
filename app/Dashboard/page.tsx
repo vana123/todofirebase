@@ -4,7 +4,7 @@ import ProtectedRoute from "@/components/ProtectedRoute";
 import { AuthContext } from "@/contexts/AuthContext";
 import { auth } from "@/firebase/config";
 import { db } from "@/firebase/config";
-import { collection, query, where, onSnapshot } from "firebase/firestore";
+import { collection, query, where, onSnapshot, deleteDoc, doc } from "firebase/firestore";
 import { Todo } from "@/interface/todoT";
 import { signOut } from "firebase/auth";
 import { useRouter } from "next/navigation";
@@ -63,6 +63,20 @@ const Dashboard = () => {
     }
   };
 
+  // Функція для видалення To-Do (тільки для Admin)
+  const handleDelete = async (id: string) => {
+    if (!confirm("Ви впевнені, що хочете видалити цей To-Do?")) {
+      return;
+    }
+    try {
+      await deleteDoc(doc(db, "todos", id));
+      console.log("To-Do видалено");
+    } catch (error) {
+      console.error("Помилка видалення:", error);
+    }
+  };
+
+
   return (
     <div>
       <nav className="flex between items-center justify-between p-4 bg-gray-800 text-white">
@@ -95,6 +109,12 @@ const Dashboard = () => {
               <Link href={`/todo/${todo.id}`} className="hover:underline">
                 {todo.title}
               </Link>
+              <button
+                onClick={() => handleDelete(todo.id)}
+                className="mt-2 p-1 bg-red-500 text-white rounded text-xs"
+              >
+                Видалити
+              </button>
               <p className="text-xs text-gray-400">{todo.description}</p>
               {todo.items.map((item, index) => (
                 <div key={index} className="grid grid-cols-1 sm:grid-cols-2 gap-2 items-center p-1">
@@ -146,7 +166,6 @@ const Dashboard = () => {
           ))}
         </div>
       )}
-      <button onClick={() => { console.log(adminTodos, viewerTodos, user?.uid) }}>test</button>
     </div>
   );
 };
