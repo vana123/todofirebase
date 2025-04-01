@@ -19,7 +19,11 @@ const RegisterPage = () => {
 
   if (loading) return <p>Завантаження...</p>;
 
-  return <RegisterForm />;
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <RegisterForm />
+    </div>
+);
 };
 
 export default RegisterPage;

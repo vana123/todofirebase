@@ -10,8 +10,8 @@ const LoginPage = () => {
   const router = useRouter();
 
   useEffect(() => {
-      console.log("User:", user);
-      console.log("Loading:", loading);  
+    console.log("User:", user);
+    console.log("Loading:", loading);
     if (!loading && user) {
       router.push("/Dashboard");
     }
@@ -19,7 +19,11 @@ const LoginPage = () => {
 
   if (loading) return <p>Завантаження...</p>;
 
-  return <LoginForm />;
+  return (
+    <div className="flex flex-col items-center justify-center min-h-screen py-2">
+      <LoginForm />
+    </div>
+  );
 };
 
 export default LoginPage;

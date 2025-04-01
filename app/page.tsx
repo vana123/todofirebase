@@ -3,7 +3,8 @@
 import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
 import { AuthContext, AuthProvider } from "@/contexts/AuthContext";
-import { useContext } from "react";
+import {useRouter} from "next/navigation";
+import { useContext, useEffect } from "react";
 
 export default function Home() {
   return (
@@ -15,12 +16,20 @@ export default function Home() {
 
 function HomeContent() {
   const { user, loading } = useContext(AuthContext);
+  const router = useRouter();
+  
+   useEffect(() => {
+      console.log("User:", user);
+      console.log("Loading:", loading);
+      if (!loading && user) {
+        router.push("/Dashboard");
+      }
+    }, [user, loading, router]);
 
   return (
     <div className="grid place-items-center h-screen">
       <RegisterForm />
       <LoginForm />
-      <button onClick={() => console.log(user, loading)}>test</button>
     </div>
   );
 }
