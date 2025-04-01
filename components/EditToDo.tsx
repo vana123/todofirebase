@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useContext } from "react";
+import { useState, useEffect, useContext, KeyboardEvent } from "react";
 import { useRouter, useParams } from "next/navigation";
 import { doc, getDoc, updateDoc, addDoc, collection } from "firebase/firestore";
 import { db } from "@/firebase/config";
@@ -10,7 +10,7 @@ export type todoItem = {
   title: string;
   description: string;
   completed: boolean;
-}; 
+};
 
 export type Todo = {
   id: string;
@@ -29,21 +29,24 @@ const TodoForm = () => {
   const idParam = params?.id;
   const todoId = Array.isArray(idParam) ? idParam[0] : idParam;
 
-  // Стани для полів Todo
+  // Стан для основних полів Todo
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
   const [completed, setCompleted] = useState(false);
   const [items, setItems] = useState<todoItem[]>([]);
   const [viewers, setViewers] = useState<string[]>([]);
 
-  // Стани для додавання нового елемента todoItem
-  const [newItemTitle, setNewItemTitle] = useState("");
-  const [newItemDescription, setNewItemDescription] = useState("");
+  // Inline редагування елементів: зберігаємо індекс редагованого елемента і його новий текст
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedItemTitle, setEditedItemTitle] = useState("");
 
-  // Стани для додавання нового Viewer
+  // Стан для додавання нового елемента через однорядковий інпут
+  const [newItemTitle, setNewItemTitle] = useState("");
+
+  // Стан для додавання нового Viewer
   const [newViewerEmail, setNewViewerEmail] = useState("");
 
-  // Стани помилок
+  // Стан для помилок
   const [error, setError] = useState("");
 
   // Завантаження існуючого Todo для редагування
@@ -67,29 +70,56 @@ const TodoForm = () => {
     }
   }, [todoId, user]);
 
-  // Додавання нового todoItem
-  const addItem = () => {
-    if (newItemTitle.trim() === "") return;
+  // Функція додавання нового елемента, натискання Enter додає елемент
+  const handleNewItemKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && newItemTitle.trim() !== "") {
+      e.preventDefault();
+      addNewItem();
+    }
+  };
+
+  const addNewItem = () => {
     const newItem: todoItem = {
-      title: newItemTitle,
-      description: newItemDescription,
+      title: newItemTitle.trim(),
+      description: "", // опис за замовчуванням порожній
       completed: false,
     };
     setItems([...items, newItem]);
     setNewItemTitle("");
-    setNewItemDescription("");
+  };
+
+  // Обробка клавіш при редагуванні існуючого елемента
+  const handleItemKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // запобігаємо сабміту форми
+      saveEditedItem(index);
+    }
+  };
+
+  const saveEditedItem = (index: number) => {
+    if (editedItemTitle.trim() === "") return;
+    const updatedItems = [...items];
+    updatedItems[index].title = editedItemTitle.trim();
+    setItems(updatedItems);
+    setEditingIndex(null);
+    setEditedItemTitle("");
   };
 
   const removeItem = (index: number) => {
     setItems(items.filter((_, i) => i !== index));
   };
 
+  // Функція для перемикання чекбокса у елементах
+  const toggleItemCompleted = (index: number, checked: boolean) => {
+    const updatedItems = [...items];
+    updatedItems[index].completed = checked;
+    setItems(updatedItems);
+  };
+
   // Додавання нового Viewer з перевіркою Gmail
   const addViewer = () => {
     const email = newViewerEmail.trim().toLowerCase();
     if (!email) return;
-
-    // Мінімальна валідація: перевірка формату та домену gmail.com
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     if (!emailRegex.test(email) || !email.endsWith("@gmail.com")) {
       setError("Введіть дійсний Gmail адрес");
@@ -108,14 +138,12 @@ const TodoForm = () => {
     setViewers(viewers.filter((_, i) => i !== index));
   };
 
-  // Обробка форми: створення нового або оновлення існуючого Todo
+  // Обробка сабміту форми для створення/оновлення Todo
   const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
     if (!user) return;
-
     try {
       if (todoId) {
-        // Режим редагування: оновлення документа
         const docRef = doc(db, "todos", todoId);
         await updateDoc(docRef, {
           title,
@@ -125,7 +153,6 @@ const TodoForm = () => {
           viewers,
         });
       } else {
-        // Режим створення нового Todo – creator автоматично стає Admin
         await addDoc(collection(db, "todos"), {
           title,
           description,
@@ -149,6 +176,7 @@ const TodoForm = () => {
         {todoId ? "Редагувати To-Do" : "Створити нове To-Do"}
       </h1>
       <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+        {/* Поля для заголовку та опису To-Do */}
         <input
           type="text"
           placeholder="Заголовок"
@@ -171,26 +199,66 @@ const TodoForm = () => {
           Виконано
         </label>
 
-        {/* Розділ для управління елементами todoItem */}
+        {/* Секція для управління елементами To-Do */}
         <div className="border p-2 rounded">
-          <h2 className="font-semibold">Елементи To-Do</h2>
+          <h2 className="font-semibold mb-2">Елементи To-Do</h2>
           {items.length === 0 ? (
             <p>Поки немає елементів.</p>
           ) : (
             <ul>
               {items.map((item, index) => (
-                <li key={index} className="flex justify-between items-center border-b py-1">
-                  <div>
-                    <p className="font-semibold">{item.title}</p>
-                    <p className="text-sm">{item.description}</p>
-                    <p className="text-sm">
-                      Виконано: {item.completed ? "Так" : "Ні"}
-                    </p>
+                <li
+                  key={index}
+                  className="flex items-center justify-between border-b py-1"
+                >
+                  <div className="flex items-center flex-grow">
+                    {/* Чекбокс для перемикання статусу виконання */}
+                    <input
+                      type="checkbox"
+                      checked={item.completed}
+                      onChange={(e) =>
+                        toggleItemCompleted(index, e.target.checked)
+                      }
+                      className="mr-2"
+                    />
+                    {editingIndex === index ? (
+                      <input
+                        type="text"
+                        value={editedItemTitle}
+                        onChange={(e) => setEditedItemTitle(e.target.value)}
+                        onBlur={() => saveEditedItem(index)}
+                        onKeyDown={(e) => handleItemKeyDown(e, index)}
+                        className="p-1 border rounded flex-grow"
+                        autoFocus
+                      />
+                    ) : (
+                      <div className="flex-grow flex items-center">
+                        
+                        <span
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditedItemTitle(item.title);
+                          }}
+                        >
+                          {item.title}
+                        </span>
+                        <span
+                          className="ml-2 cursor-pointer text-gray-500"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditedItemTitle(item.title);
+                          }}
+                        >
+                          ✏️
+                        </span>
+                      </div>
+                    )}
                   </div>
                   <button
                     type="button"
                     onClick={() => removeItem(index)}
-                    className="text-red-500"
+                    className="text-red-500 ml-2"
                   >
                     Видалити
                   </button>
@@ -198,41 +266,31 @@ const TodoForm = () => {
               ))}
             </ul>
           )}
+          {/* Однорядковий інпут для додавання нового елемента */}
           <div className="mt-2">
             <input
               type="text"
-              placeholder="Заголовок елемента"
+              placeholder="Введіть назву елемента та натисніть Enter"
               value={newItemTitle}
               onChange={(e) => setNewItemTitle(e.target.value)}
-              className="p-2 border rounded mb-2 w-full"
+              onKeyDown={handleNewItemKeyDown}
+              className="p-1 border rounded w-full"
             />
-            <textarea
-              placeholder="Опис елемента"
-              value={newItemDescription}
-              onChange={(e) => setNewItemDescription(e.target.value)}
-              className="p-2 border rounded mb-2 w-full"
-            />
-            <button
-              type="button"
-              onClick={addItem}
-              className="p-2 bg-green-500 text-white rounded"
-            >
-              Додати елемент
-            </button>
           </div>
         </div>
 
-        {/* Розділ для управління Viewer користувачами */}
+        {/* Секція для управління Viewer користувачами */}
         <div className="border p-2 rounded mt-4">
-          <h2 className="font-semibold">
-            Viewer (додати користувача за Gmail)
-          </h2>
+          <h2 className="font-semibold mb-2">Viewer (додати користувача за Gmail)</h2>
           {viewers.length === 0 ? (
             <p>Немає доданих користувачів.</p>
           ) : (
             <ul>
               {viewers.map((email, index) => (
-                <li key={index} className="flex justify-between items-center border-b py-1">
+                <li
+                  key={index}
+                  className="flex justify-between items-center border-b py-1"
+                >
                   <span>{email}</span>
                   <button
                     type="button"

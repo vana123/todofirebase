@@ -1,73 +1,332 @@
 "use client";
 
-import { useState } from "react";
-import { auth, db } from "@/firebase/config";
-import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
-import Link from "next/link";
-import { doc, setDoc } from "firebase/firestore";
+import { useState, useEffect, useContext, KeyboardEvent } from "react";
+import { useRouter, useParams } from "next/navigation";
+import { doc, getDoc, updateDoc, addDoc, collection } from "firebase/firestore";
+import { db } from "@/firebase/config";
+import { AuthContext } from "@/contexts/AuthContext";
 
-const RegisterForm = () => {
-  const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
-  const [password, setPassword] = useState("");
+export type todoItem = {
+  title: string;
+  description: string;
+  completed: boolean;
+};
+
+export type Todo = {
+  id: string;
+  title: string;
+  description: string;
+  completed: boolean;
+  admin: string;
+  viewers: string[];
+  items: todoItem[];
+};
+
+const TodoForm = () => {
+  const { user, loading } = useContext(AuthContext);
+  const router = useRouter();
+  const params = useParams();
+  const idParam = params?.id;
+  const todoId = Array.isArray(idParam) ? idParam[0] : idParam;
+
+  // Стан для основних полів Todo
+  const [title, setTitle] = useState("");
+  const [description, setDescription] = useState("");
+  const [completed, setCompleted] = useState(false);
+  const [items, setItems] = useState<todoItem[]>([]);
+  const [viewers, setViewers] = useState<string[]>([]);
+
+  // Inline редагування елементів: зберігаємо індекс редагованого елемента і його новий текст
+  const [editingIndex, setEditingIndex] = useState<number | null>(null);
+  const [editedItemTitle, setEditedItemTitle] = useState("");
+
+  // Стан для додавання нового елемента через однорядковий інпут
+  const [newItemTitle, setNewItemTitle] = useState("");
+
+  // Стан для додавання нового Viewer
+  const [newViewerEmail, setNewViewerEmail] = useState("");
+
+  // Стан для помилок
   const [error, setError] = useState("");
 
-  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    try {
-      const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      const user = userCredential.user;
-      // Оновлення профілю (наприклад, додавання displayName)
-      await updateProfile(user, { displayName: name });
-      // Створення документа в колекції "users" з id користувача
-      await setDoc(doc(db, "users", user.uid), {
-        email: user.email,
-        displayName: name,
-        createdAt: new Date().toISOString()
-      });
-      console.log("Реєстрація та створення документа користувача пройшли успішно!");
-    } catch (error: any) {
-      setError(error.message);
+  // Завантаження існуючого Todo для редагування
+  useEffect(() => {
+    if (todoId && user) {
+      const docRef = doc(db, "todos", todoId);
+      getDoc(docRef)
+        .then((docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data();
+            setTitle(data.title || "");
+            setDescription(data.description || "");
+            setCompleted(data.completed || false);
+            setItems(data.items || []);
+            setViewers(data.viewers || []);
+          } else {
+            setError("To-Do не знайдено");
+          }
+        })
+        .catch((err) => setError(err.message));
+    }
+  }, [todoId, user]);
+
+  // Функція додавання нового елемента, натискання Enter додає елемент
+  const handleNewItemKeyDown = (e: KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === "Enter" && newItemTitle.trim() !== "") {
+      e.preventDefault();
+      addNewItem();
     }
   };
 
+  const addNewItem = () => {
+    const newItem: todoItem = {
+      title: newItemTitle.trim(),
+      description: "", // опис за замовчуванням порожній
+      completed: false,
+    };
+    setItems([...items, newItem]);
+    setNewItemTitle("");
+  };
+
+  // Обробка клавіш при редагуванні існуючого елемента
+  const handleItemKeyDown = (e: KeyboardEvent<HTMLInputElement>, index: number) => {
+    if (e.key === "Enter") {
+      e.preventDefault(); // запобігаємо сабміту форми
+      saveEditedItem(index);
+    }
+  };
+
+  const saveEditedItem = (index: number) => {
+    if (editedItemTitle.trim() === "") return;
+    const updatedItems = [...items];
+    updatedItems[index].title = editedItemTitle.trim();
+    setItems(updatedItems);
+    setEditingIndex(null);
+    setEditedItemTitle("");
+  };
+
+  const removeItem = (index: number) => {
+    setItems(items.filter((_, i) => i !== index));
+  };
+
+  // Функція для перемикання чекбокса у елементах
+  const toggleItemCompleted = (index: number, checked: boolean) => {
+    const updatedItems = [...items];
+    updatedItems[index].completed = checked;
+    setItems(updatedItems);
+  };
+
+  // Додавання нового Viewer з перевіркою Gmail
+  const addViewer = () => {
+    const email = newViewerEmail.trim().toLowerCase();
+    if (!email) return;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if (!emailRegex.test(email) || !email.endsWith("@gmail.com")) {
+      setError("Введіть дійсний Gmail адрес");
+      return;
+    }
+    if (viewers.includes(email)) {
+      setError("Цей користувач вже доданий");
+      return;
+    }
+    setViewers([...viewers, email]);
+    setNewViewerEmail("");
+    setError("");
+  };
+
+  const removeViewer = (index: number) => {
+    setViewers(viewers.filter((_, i) => i !== index));
+  };
+
+  // Обробка сабміту форми для створення/оновлення Todo
+  const handleSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    if (!user) return;
+    try {
+      if (todoId) {
+        const docRef = doc(db, "todos", todoId);
+        await updateDoc(docRef, {
+          title,
+          description,
+          completed,
+          items,
+          viewers,
+        });
+      } else {
+        await addDoc(collection(db, "todos"), {
+          title,
+          description,
+          completed,
+          admin: user.uid,
+          viewers,
+          items,
+        });
+      }
+      router.push("/Dashboard");
+    } catch (err: any) {
+      setError(err.message);
+    }
+  };
+
+  if (loading) return <p>Завантаження...</p>;
+
   return (
-    <form onSubmit={handleSubmit} className="flex flex-col gap-2">
-      <input
-        type="text"
-        placeholder="Ім'я"
-        value={name}
-        onChange={(e) => setName(e.target.value)}
-        className="p-2 border rounded"
-      />
-      <input
-        type="email"
-        placeholder="Email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        className="p-2 border rounded"
-      />
-      <input
-        type="password"
-        placeholder="Пароль"
-        value={password}
-        onChange={(e) => setPassword(e.target.value)}
-        className="p-2 border rounded"
-      />
-      <button type="submit" className="p-2 bg-blue-500 text-white rounded">
-        Зареєструватися
-      </button>
-      {error && <p className="text-red-500">{error}</p>}
-      <div className="text-center mt-4">
-        <p>
-          Вже є акаунт?{" "}
-          <Link href="/login" className="text-blue-500 hover:underline">
-            Увійдіть
-          </Link>
-        </p>
-      </div>
-    </form>
+    <div className="p-4">
+      <h1 className="text-xl font-bold">
+        {todoId ? "Редагувати To-Do" : "Створити нове To-Do"}
+      </h1>
+      <form onSubmit={handleSubmit} className="flex flex-col gap-4 mt-4">
+        {/* Поля для заголовку та опису To-Do */}
+        <input
+          type="text"
+          placeholder="Заголовок"
+          value={title}
+          onChange={(e) => setTitle(e.target.value)}
+          className="p-2 border rounded"
+        />
+        <textarea
+          placeholder="Опис"
+          value={description}
+          onChange={(e) => setDescription(e.target.value)}
+          className="p-2 border rounded"
+        />
+        <label className="flex items-center gap-2">
+          <input
+            type="checkbox"
+            checked={completed}
+            onChange={(e) => setCompleted(e.target.checked)}
+          />
+          Виконано
+        </label>
+
+        {/* Секція для управління елементами To-Do */}
+        <div className="border p-2 rounded">
+          <h2 className="font-semibold mb-2">Елементи To-Do</h2>
+          {items.length === 0 ? (
+            <p>Поки немає елементів.</p>
+          ) : (
+            <ul>
+              {items.map((item, index) => (
+                <li
+                  key={index}
+                  className="flex items-center justify-between border-b py-1"
+                >
+                  <div className="flex items-center flex-grow">
+                    {/* Чекбокс для перемикання статусу виконання */}
+                    <input
+                      type="checkbox"
+                      checked={item.completed}
+                      onChange={(e) =>
+                        toggleItemCompleted(index, e.target.checked)
+                      }
+                      className="mr-2"
+                    />
+                    {editingIndex === index ? (
+                      <input
+                        type="text"
+                        value={editedItemTitle}
+                        onChange={(e) => setEditedItemTitle(e.target.value)}
+                        onBlur={() => saveEditedItem(index)}
+                        onKeyDown={(e) => handleItemKeyDown(e, index)}
+                        className="p-1 border rounded flex-grow"
+                        autoFocus
+                      />
+                    ) : (
+                      <div className="flex-grow flex items-center">
+                        <span
+                          className="cursor-pointer"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditedItemTitle(item.title);
+                          }}
+                        >
+                          {item.title}
+                        </span>
+                        <span
+                          className="ml-2 cursor-pointer text-gray-500"
+                          onClick={() => {
+                            setEditingIndex(index);
+                            setEditedItemTitle(item.title);
+                          }}
+                        >
+                          ✏️
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                  <button
+                    type="button"
+                    onClick={() => removeItem(index)}
+                    className="text-red-500 ml-2"
+                  >
+                    Видалити
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          {/* Однорядковий інпут для додавання нового елемента */}
+          <div className="mt-2">
+            <input
+              type="text"
+              placeholder="Введіть назву елемента та натисніть Enter"
+              value={newItemTitle}
+              onChange={(e) => setNewItemTitle(e.target.value)}
+              onKeyDown={handleNewItemKeyDown}
+              className="p-1 border rounded w-full"
+            />
+          </div>
+        </div>
+
+        {/* Секція для управління Viewer користувачами */}
+        <div className="border p-2 rounded mt-4">
+          <h2 className="font-semibold mb-2">Viewer (додати користувача за Gmail)</h2>
+          {viewers.length === 0 ? (
+            <p>Немає доданих користувачів.</p>
+          ) : (
+            <ul>
+              {viewers.map((email, index) => (
+                <li
+                  key={index}
+                  className="flex justify-between items-center border-b py-1"
+                >
+                  <span>{email}</span>
+                  <button
+                    type="button"
+                    onClick={() => removeViewer(index)}
+                    className="text-red-500"
+                  >
+                    Видалити
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+          <div className="mt-2">
+            <input
+              type="email"
+              placeholder="Введіть Gmail"
+              value={newViewerEmail}
+              onChange={(e) => setNewViewerEmail(e.target.value)}
+              className="p-2 border rounded mb-2 w-full"
+            />
+            <button
+              type="button"
+              onClick={addViewer}
+              className="p-2 bg-green-500 text-white rounded"
+            >
+              Додати Viewer
+            </button>
+          </div>
+        </div>
+
+        <button type="submit" className="p-2 bg-blue-500 text-white rounded">
+          {todoId ? "Оновити To-Do" : "Створити To-Do"}
+        </button>
+        {error && <p className="text-red-500">{error}</p>}
+      </form>
+    </div>
   );
 };
 
-export default RegisterForm;
+export default TodoForm;
