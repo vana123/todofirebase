@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { auth } from "../firebase/config";
+import { auth } from "@/firebase/config";
 import { signInWithEmailAndPassword } from "firebase/auth";
+import Link from "next/link";
 
 const LoginForm = () => {
   const [email, setEmail] = useState("");
@@ -39,6 +40,14 @@ const LoginForm = () => {
         Увійти
       </button>
       {error && <p className="text-red-500">{error}</p>}
+      <div className="text-center mt-4">
+        <p>
+          Немає акаунта?{" "}
+          <Link href="/Register" className="text-blue-500 hover:underline">
+            Зареєструватися
+          </Link>
+        </p>
+      </div>
     </form>
   );
 };

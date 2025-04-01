@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { auth } from "../firebase/config";
+import { auth } from "@/firebase/config";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
+import Link from "next/link";
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
@@ -14,8 +15,8 @@ const RegisterForm = () => {
     e.preventDefault();
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      // Оновлюємо профіль, додаючи ім'я користувача
       await updateProfile(userCredential.user, { displayName: name });
+      console.log("Реєстрація успішна!");
     } catch (error: any) {
       setError(error.message);
     }
@@ -48,6 +49,14 @@ const RegisterForm = () => {
         Зареєструватися
       </button>
       {error && <p className="text-red-500">{error}</p>}
+      <div className="text-center mt-4">
+        <p>
+          Вже є акаунт?{" "}
+          <Link href="/login" className="text-blue-500 hover:underline">
+            Увійдіть
+          </Link>
+        </p>
+      </div>
     </form>
   );
 };
