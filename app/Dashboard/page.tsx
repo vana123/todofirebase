@@ -19,7 +19,6 @@ const Dashboard = () => {
 
   useEffect(() => {
     if (!loading && user) {
-      // Запит для документів, де ви є Admin
       const adminQuery = query(
         collection(db, "todos"),
         where("admin", "==", user.uid)
@@ -63,7 +62,6 @@ const Dashboard = () => {
     }
   };
 
-  // Функція для видалення To-Do (тільки для Admin)
   const handleDelete = async (id: string) => {
     if (!confirm("Ви впевнені, що хочете видалити цей To-Do?")) {
       return;

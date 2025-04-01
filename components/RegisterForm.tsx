@@ -17,9 +17,7 @@ const RegisterForm = () => {
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
-      // Оновлення профілю (наприклад, додавання displayName)
       await updateProfile(user, { displayName: name });
-      // Створення документа в колекції "users" з id користувача
       await setDoc(doc(db, "users", user.uid), {
         email: user.email,
         displayName: name,

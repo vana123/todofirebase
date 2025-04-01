@@ -3,7 +3,6 @@
 import { useContext, useEffect } from "react";
 import { useRouter } from "next/navigation";
 import { AuthContext } from "@/contexts/AuthContext";
-import LoginForm from "@/components/LoginForm";
 import RegisterForm from "@/components/RegisterForm";
 
 const RegisterPage = () => {
