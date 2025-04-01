@@ -1,9 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { auth } from "@/firebase/config";
+import { auth, db } from "@/firebase/config";
 import { createUserWithEmailAndPassword, updateProfile } from "firebase/auth";
 import Link from "next/link";
+import { doc, setDoc } from "firebase/firestore";
 
 const RegisterForm = () => {
   const [name, setName] = useState("");
@@ -15,8 +16,16 @@ const RegisterForm = () => {
     e.preventDefault();
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-      await updateProfile(userCredential.user, { displayName: name });
-      console.log("Реєстрація успішна!");
+      const user = userCredential.user;
+      // Оновлення профілю (наприклад, додавання displayName)
+      await updateProfile(user, { displayName: name });
+      // Створення документа в колекції "users" з id користувача
+      await setDoc(doc(db, "users", user.uid), {
+        email: user.email,
+        displayName: name,
+        createdAt: new Date().toISOString()
+      });
+      console.log("Реєстрація та створення документа користувача пройшли успішно!");
     } catch (error: any) {
       setError(error.message);
     }

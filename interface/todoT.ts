@@ -12,5 +12,3 @@ export type todoItem = {
     description: string;
     completed: boolean;
 }
-
-export type TodoList = Todo[];
