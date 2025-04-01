@@ -13,6 +13,7 @@ const LoginForm = () => {
     e.preventDefault();
     try {
       await signInWithEmailAndPassword(auth, email, password);
+      console.log("Успішний вхід!");
     } catch (error: any) {
       setError(error.message);
     }
