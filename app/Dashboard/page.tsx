@@ -20,14 +20,16 @@ const Dashboard = () => {
 
   return (
     <div>
-      <h1>Dashboard</h1>
-      <p>Ласкаво просимо у ваш особистий кабінет!</p>
-      <button
-        onClick={handleLogout}
-        className="mt-4 p-2 bg-red-500 text-white rounded"
-      >
-        Вийти з акаунту
-      </button>
+      <nav className="flex between items-center justify-between p-4 bg-gray-800 text-white">
+        <h1>Dashboard</h1>
+        <button
+          onClick={handleLogout}
+          className="p-2 bg-red-500 text-white rounded"
+        >
+          Вийти з акаунту
+        </button>
+        
+      </nav>
     </div>
   );
 };
